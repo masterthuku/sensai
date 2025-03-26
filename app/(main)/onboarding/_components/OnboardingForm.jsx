@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { onboardingSchema } from "@/app/lib/schema";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -20,10 +20,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { updateUser } from "@/actions/user";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import useFetch from "@/hooks/use-fetch";
 
 const OnboardingForm = ({ industries }) => {
   const [selectedIndustry, setSelectedIndustry] = useState(null);
   const router = useRouter();
+
+  const {
+    loading: updateLoading,
+    fn: updateUserFn,
+    data: updateResult,
+  } = useFetch(updateUser);
 
   const {
     register,
@@ -33,11 +46,28 @@ const OnboardingForm = ({ industries }) => {
     watch,
   } = useForm({ resolver: zodResolver(onboardingSchema) });
 
-  const watchIndustry = watch("industry");
-
   const onSubmit = async (values) => {
-    
-  }
+    try {
+      const formattedIndustry = `${values.industry} - ${values.subIndustry
+        .toLowerCase()
+        .replace(/ /g, "-")}`;
+
+      await updateUserFn({ ...values, industry: formattedIndustry });
+    } catch (error) {
+      console.error("Onboarding error:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (updateResult?.success && !updateLoading) {
+      toast.success("Profile completed successfully!");
+      router.push("/dashboard");
+      router.refresh();
+    }
+  }, [updateResult, updateLoading])
+  
+
+  const watchIndustry = watch("industry");
 
   return (
     <div className="flex items-center justify-center bg-background">
@@ -96,10 +126,10 @@ const OnboardingForm = ({ industries }) => {
                     <SelectValue placeholder="Select a sub-industry" />
                   </SelectTrigger>
                   <SelectContent>
-                    {selectedIndustry?.subIndustries.map((industry) => {
+                    {selectedIndustry?.subIndustries.map((sub) => {
                       return (
-                        <SelectItem value={industry} key={industry}>
-                          {industry}
+                        <SelectItem value={sub} key={sub}>
+                          {sub}
                         </SelectItem>
                       );
                     })}
@@ -112,6 +142,60 @@ const OnboardingForm = ({ industries }) => {
                 )}
               </div>
             )}
+            <div className="space-y-2">
+              <Label htmlFor="experience">Years ofExperience</Label>
+              <Input
+                id="experience"
+                type="number"
+                min="0"
+                max="50"
+                placeholder="Enter your years of experience"
+                {...register("experience")}
+              />
+              {errors.experience && (
+                <p className="text-sm text-red-500">
+                  {errors.experience.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="skills">Skills</Label>
+              <Input
+                id="skills"
+                placeholder="eg. HTML, CSS, JavaScript, Project Management, python"
+                {...register("skills")}
+              />
+              <p className="text-sm text-muted-foreground">
+                Separate multiple skills with commas
+              </p>
+
+              {errors.skills && (
+                <p className="text-sm text-red-500">{errors.skills.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bio">Proffessional Bio</Label>
+              <Textarea
+                id="bio"
+                placeholder="Tell us more about your professional background"
+                className="h-32"
+                {...register("bio")}
+              />
+
+              {errors.bio && (
+                <p className="text-sm text-red-500">{errors.bio.message}</p>
+              )}
+            </div>
+
+            <Button type="submit" className="w-full" disabled={updateLoading}>
+              {updateLoading ? (
+                <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin">Saving...</Loader2>
+                </>
+              ) : ("Complete Profile")}
+            </Button>
           </form>
         </CardContent>
       </Card>

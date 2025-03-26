@@ -17,7 +17,7 @@ export const onboardingSchema = z.object({
         .min(0, "Experience must be at least 0 years")
         .max(50, "Experience must be at most 50 years")
     ),
-  skils: z.string().transform((val) =>
+  skills: z.string().transform((val) =>
     val
       ? val
           .split(", ")
