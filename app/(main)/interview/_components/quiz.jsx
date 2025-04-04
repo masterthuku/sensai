@@ -14,6 +14,9 @@ import { Button } from "@/components/ui/button";
 import { BarLoader } from "react-spinners";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import QuizResult from "./QuizResult";
 
 const Quiz = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -32,6 +35,8 @@ const Quiz = () => {
     data: resultData,
     setData: setResultData,
   } = useFetch(saveQuizResult);
+
+  console.log(resultData);
 
   useEffect(() => {
     if (quizData) {
@@ -54,12 +59,45 @@ const Quiz = () => {
     }
   };
 
+  const calculateScore = () => {
+    let correct = 0;
+    answers.forEach((answer, index) => {
+      if (answer === quizData[index].correctAnswer) {
+        correct++;
+      }
+    })
+    return (correct / quizData.length) * 100
+  }
+
   const finishQuiz = async () => {
-    const score = 0
+    const score = calculateScore()
+
+    try {
+      await saveQuizResultFn(quizData, answers, score);
+      toast.success("Quiz completed!");
+    } catch (error) {
+      toast.error(error.message || "Failed to save quiz result");
+    }
   };
+
+  const startNewQuiz = () => {
+    setCurrentQuestion(0);
+    setAnswers([]);
+    setShowExplanation(false);
+    generateQuizFn();
+    setResultData(null);
+  }
 
   if (generatingQuiz) {
     return <BarLoader className="mt-4" width={"100%"} color="gray" />;
+  }
+
+  if (resultData) {
+    return (
+      <div className="mx-2">
+        <QuizResult result={resultData} onStartNew={startNewQuiz} />
+      </div>
+    )
   }
 
   if (!quizData) {
@@ -130,8 +168,9 @@ const Quiz = () => {
         <Button
           onClick={handleNext}
           className="ml-auto"
-          disabled={!answers[currentQuestion]}
+          disabled={!answers[currentQuestion] || savingResult}
         >
+          {savingResult && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {currentQuestion < quizData.length - 1
             ? "Next Question"
             : "Finish Quiz"}
