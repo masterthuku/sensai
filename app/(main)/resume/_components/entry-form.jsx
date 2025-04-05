@@ -3,7 +3,7 @@
 import { entrySchema } from "@/app/lib/schema";
 import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, PlusCircle, Sparkles } from "lucide-react";
+import { Loader2, PlusCircle, Sparkles, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -19,6 +19,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { improveWithAI } from "@/actions/resume";
 import useFetch from "@/hooks/use-fetch";
 import { toast } from "sonner";
+import { format, parse } from "date-fns";
+
+const formatDisplayDate = (dateString) => {
+  if (!dateString) return "";
+  const date = parse(dateString, "yyyy-MM", new Date());
+  return format(date, "MMM yyyy");
+};
 
 const EntryForm = ({ type, entries, onChange }) => {
   const [isAdding, setIsAdding] = useState(false);
@@ -51,8 +58,20 @@ const EntryForm = ({ type, entries, onChange }) => {
     error: improveError,
   } = useFetch(improveWithAI);
 
-  const handleAdd = () => {};
-  const handleDelete = () => {};
+  const handleAdd = handleValidation((data) => {
+    const formattedEntry = {
+      ...data,
+      startDate: formatDisplayDate(data.startDate),
+      endDate: data.current ? "" : formatDisplayDate(data.endDate),
+    };
+    onChange([...entries, formattedEntry]);
+    reset();
+    setIsAdding(false);
+  });
+  const handleDelete = (index) => {
+    const newEntries = entries.filter((_, i) => i !== index);
+    onChange(newEntries);
+  };
 
   useEffect(() => {
     if (improvedContent && !isImproving) {
@@ -76,7 +95,33 @@ const EntryForm = ({ type, entries, onChange }) => {
     });
   };
   return (
-    <div>
+    <div className="space-y-4">
+      <div className="space-y-4">
+        {entries.map((item, index) => {
+          return (
+            <Card key={index}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {item.title} @ {item.organization}
+                </CardTitle>
+                <Button variant="outline" size="icon" type="button" onClick={() => handleDelete(index)}>
+                  <X className="h-4 w-4"/>
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  {item.current ? `${item.startDate} - Present` : `${item.startDate} - ${item.endDate}`}
+                </p>
+                <p className="mt-2 text-sm whitespace-pre-wrap">
+                  {item.description}
+                </p>
+              </CardContent>
+            
+            </Card>
+          );
+        })}
+      </div>
+
       {isAdding && (
         <Card>
           <CardHeader>
@@ -192,7 +237,7 @@ const EntryForm = ({ type, entries, onChange }) => {
               Cancel
             </Button>
             <Button type="button" onClick={handleAdd}>
-                <PlusCircle className="h-4 w-4 mr-2" /> Add Entry
+              <PlusCircle className="h-4 w-4 mr-2" /> Add Entry
             </Button>
           </CardFooter>
         </Card>
